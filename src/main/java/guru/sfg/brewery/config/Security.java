@@ -1,8 +1,10 @@
 package guru.sfg.brewery.config;
 
+import guru.sfg.brewery.security.JpaUserDetailsService;
 import guru.sfg.brewery.security.RestHeaderAuthFilter;
 import guru.sfg.brewery.security.RestUrlAuthFilter;
 import guru.sfg.brewery.security.SfgPasswordEncoderFactories;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,7 +18,6 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @EnableWebSecurity
 public class Security extends WebSecurityConfigurerAdapter {
-
 
     public RestHeaderAuthFilter restHeaderAuthFilter(AuthenticationManager authenticationManager){
         RestHeaderAuthFilter filter = new RestHeaderAuthFilter(new AntPathRequestMatcher("/api/**"));
@@ -35,16 +36,21 @@ public class Security extends WebSecurityConfigurerAdapter {
         return SfgPasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
+    @Autowired
+    JpaUserDetailsService jpaUserDetailsService;
+
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.addFilterBefore(restHeaderAuthFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
-                .csrf().disable();
-        http.addFilterBefore(restUrlAuthFilter(authenticationManager()),
-                UsernamePasswordAuthenticationFilter.class);
-
+//        http.addFilterBefore(restHeaderAuthFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
+//                .csrf().disable();
+//        http.addFilterBefore(restUrlAuthFilter(authenticationManager()),
+//                UsernamePasswordAuthenticationFilter.class);
         http
                 .authorizeRequests(authorize -> {
-                    authorize.antMatchers("/", "/webjars/**", "/resources/**", "/login").permitAll()
+                    authorize
+                            .antMatchers("/h2-console/**").permitAll()
+                            .antMatchers("/", "/webjars/**", "/resources/**", "/login").permitAll()
                             .antMatchers("/beers/find").permitAll()
                             .antMatchers(HttpMethod.GET,"/api/v1/beer/**").permitAll()
                             .mvcMatchers(HttpMethod.GET, "/api/v1/beerUpc/{upc}").permitAll();
@@ -55,22 +61,27 @@ public class Security extends WebSecurityConfigurerAdapter {
                 .formLogin()
                 .and()
                 .httpBasic();
+
+        http.headers().frameOptions().sameOrigin();
     }
+
+
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.inMemoryAuthentication()
-                .withUser("spring")
-                .password("{noop}guru")
-                .roles("ADMIN")
-                .and()
-                .withUser("user")
-                .password("{noop}password")
-                .roles("USER")
-                .and()
-                .withUser("scott")
-                .password("{bcrypt15}$2a$10$x1ha/GQQkSdMgIutrDPRO.rxSSeWJNlHGJETKJ4hqzp9BKrswTYVO")
-                .roles("CUSTOMER");
+        auth.userDetailsService(jpaUserDetailsService).passwordEncoder(passwordEncoder());
+//        auth.inMemoryAuthentication()
+//                .withUser("spring")
+//                .password("{noop}guru")
+//                .roles("ADMIN")
+//                .and()
+//                .withUser("user")
+//                .password("{noop}password")
+//                .roles("USER")
+//                .and()
+//                .withUser("scott")
+//                .password("{bcrypt15}$2a$10$x1ha/GQQkSdMgIutrDPRO.rxSSeWJNlHGJETKJ4hqzp9BKrswTYVO")
+//                .roles("CUSTOMER");
     }
 
     //    @Override
